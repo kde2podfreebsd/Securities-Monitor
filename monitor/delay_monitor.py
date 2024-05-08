@@ -52,6 +52,8 @@ class DelayMonitor:
                         print(f"Date: {formatted_date}, Market: {market}, Endpoint: {endpoint}")
                         print(dataframe['ts'], end="\n-------------\n")
 
+        del dataframe
+
 
 if __name__ == "__main__":
     # dm = DelayMonitor()
