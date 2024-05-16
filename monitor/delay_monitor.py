@@ -1,13 +1,20 @@
-from datetime import datetime, date, timedelta
+import os
+
 import pandas as pd
+from dotenv import load_dotenv
+from datetime import datetime, date, timedelta
 from monitor.utils import Markets, Endpoints
+from monitor.auth import PassportMOEXAuth
 
 
-class DelayMonitor:
+class DelayMonitor(PassportMOEXAuth):
 
     def __init__(self):
+        load_dotenv()
+        super().__init__(username=os.getenv('login'), password=os.getenv('password'))
         self.endpoints = [endpoint.value for endpoint in Endpoints]
         self.markets = [market.value for market in Markets]
+        self.basedir = os.path.abspath(os.path.dirname(__file__))
 
     @staticmethod
     def preprocessing(dataframe):
@@ -20,13 +27,18 @@ class DelayMonitor:
 
         return dataframe
 
-    def calculate_delay(self, url: str):
+    def calculate_delay(self, url: str, formatted_date: datetime.date):
         try:
-            dataframe = pd.read_csv(url, sep=';', skiprows=2)
+            filename = self.download_csv(url=url, filename=f'{formatted_date}.csv')
+            dataframe = pd.read_csv(f'{self.basedir}/csv/{filename}', sep=';', skiprows=2)
+            if dataframe.shape[0] == 0:
+                return False, False
+
             dataframe = self.preprocessing(dataframe)
             ts = dataframe.loc[0, 'ts']
             delta = (datetime.now() - ts).seconds
             return delta, dataframe
+
         except Exception as e:
             print(f"Error occurred while processing {url}: {e}")
             return None, None
@@ -43,20 +55,22 @@ class DelayMonitor:
                 for market in self.markets:
                     url = f'https://iss.moex.com/iss/datashop/algopack/{market}/{endpoint}/sber.csv?from={formatted_date}&till={formatted_date}&iss.only=data'
                     print(url)
-                    delta, dataframe = self.calculate_delay(url=url)
-                    print(delta)
+                    delta, dataframe = self.calculate_delay(url=url, formatted_date=formatted_date)
+                    if delta and dataframe is False:
+                        continue
                     if delta is None:
                         # TODO: обработка что это или выходной или пропуск в данных
                         continue
                     if delta > 10 * 60:
-                        print(f"Date: {formatted_date}, Market: {market}, Endpoint: {endpoint}")
-                        print(dataframe['ts'], end="\n-------------\n")
+                        print(delta, dataframe)
+                        # print(f"Date: {formatted_date}, Market: {market}, Endpoint: {endpoint}")
+                        # print(dataframe['ts'], end="\n-------------\n")
 
         del dataframe
 
 
 if __name__ == "__main__":
-    # dm = DelayMonitor()
-    # dm.upload_history_delay(start_date=date(2024, 4, 25), end_date=date.today())
-    df = pd.read_csv("https://iss.moex.com/iss/datashop/algopack/eq/tradestats/sber.csv?from=2024-04-25&till=2024-04-25&iss.only=data", sep=';', skiprows=2, encoding='utf-8')
-    print(df)
+    dm = DelayMonitor()
+    dm.upload_history_delay(start_date=date(2024, 4, 25), end_date=date.today())
+    # df = pd.read_csv("https://iss.moex.com/iss/datashop/algopack/eq/tradestats/sber.csv?from=2024-04-25&till=2024-04-25&iss.only=data", sep=';', skiprows=2, encoding='utf-8')
+    # print(df)

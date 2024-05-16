@@ -1,0 +1,5 @@
+data
+
+tradedate;tradetime;secid;asset_code;metric;value;reference;SYSTIME
+
+
