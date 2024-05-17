@@ -23,19 +23,6 @@ services:
     networks:
       - custom
 
-#  mdp_bot_satus:
-#    build: .
-#    container_name: mdp_status
-#    restart: always
-#    depends_on:
-#      - db
-#    env_file:
-#      - .env
-#    ports:
-#      - "8000:8000"
-#    networks:
-#      - custom
-
 networks:
   custom:
     driver: bridge
