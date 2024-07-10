@@ -8,6 +8,7 @@ from src.monitor import ISSEndpointsFetcher
 from src.trading_calendar import MOEXTradingCalendar
 from src.monitor import Market, Endpoint
 from src.bot.handlers.alerts import send_fo_obstats_tickers_count, send_plots
+import asyncio
 
 load_dotenv()
 
@@ -161,6 +162,9 @@ class TradingScheduler:
         self.scheduler.start()
         print(self.list_jobs())
 
+        asyncio.get_event_loop().run_forever()
+
 if __name__ == "__main__":
     trading_scheduler = TradingScheduler()
     trading_scheduler.run()
+
