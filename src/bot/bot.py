@@ -1,4 +1,3 @@
-import os
 import asyncio
 
 from dotenv import load_dotenv
@@ -28,15 +27,11 @@ class Bot:
         bot.add_custom_filter(StateFilter(bot))
         bot.add_custom_filter(IsDigitFilter())
 
-        bot.setup_middleware(FloodingMiddleware(1))
+        #bot.setup_middleware(FloodingMiddleware(1))
 
-        #self.scheduled_tasks = trading_scheduler
-
-    async def polling(self):
-        task1 = asyncio.create_task(bot.infinity_polling())
-        #self.scheduled_tasks.run()
-        await task1
+    def polling(self):
+        asyncio.run(bot.infinity_polling())
 
 
 if __name__ == "__main__":
-    asyncio.run(Bot().polling())
+    Bot().polling()
