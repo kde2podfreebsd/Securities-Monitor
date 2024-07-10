@@ -123,7 +123,7 @@ class TradingScheduler:
         )
 
         self.scheduler.add_job(self.eq_monitoring_delays, eq_session1_interval_trigger, id="EQ1", max_instances=1, misfire_grace_time=600)
-        self.scheduler.add_job(self.eq_monitoring_delays, eq_session2_interval_trigger, id="EQ2", max_instances=1, misfire_grace_time=600)
+        #self.scheduler.add_job(self.eq_monitoring_delays, eq_session2_interval_trigger, id="EQ2", max_instances=1, misfire_grace_time=600)
 
         # FX
         fx_session1_interval_trigger = IntervalTrigger(
