@@ -163,4 +163,4 @@ class TradingScheduler:
 
 if __name__ == "__main__":
     trading_scheduler = TradingScheduler()
-    trading_scheduler.scheduled_tasks.run()
+    trading_scheduler.run()
