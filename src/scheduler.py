@@ -7,7 +7,7 @@ from datetime import time, datetime, date
 from src.monitor import ISSEndpointsFetcher
 from src.trading_calendar import MOEXTradingCalendar
 from src.monitor import Market, Endpoint
-from src.bot.handlers.alerts import send_fo_obstats_tickers_count, draw_plot, send_plots
+from src.bot.handlers.alerts import send_fo_obstats_tickers_count, send_plots
 
 load_dotenv()
 
@@ -55,6 +55,7 @@ class TradingScheduler:
             await self.iss_fetcher.process_market_endpoints(Market.FUTURES, date.today())
             fo_obstats_count_tickers, current_interval = await self.iss_fetcher.tickers_count_fo_obstats()
             await send_fo_obstats_tickers_count(count=fo_obstats_count_tickers, trading_time=current_interval)
+            await self.iss_fetcher.futoi_delay_notifications(date.today())
         else:
             print(f"{date.today()} is not trading date")
 
@@ -62,14 +63,15 @@ class TradingScheduler:
         await self.iss_fetcher.check_hi2_status()
 
     async def send_plots_to_chat(self):
-        eq_tradestats_filename = await draw_plot(market=Market.SHARES, endpoint=Endpoint.TRADESTATS, trading_date=date.today())
-        eq_orderstats_filename = await draw_plot(market=Market.SHARES, endpoint=Endpoint.ORDERSTATS, trading_date=date.today())
-        eq_obstats_filename = await draw_plot(market=Market.SHARES, endpoint=Endpoint.ORDERBOOKSTATS, trading_date=date.today())
-        fx_tradestats_filename = await draw_plot(market=Market.CURRENCY, endpoint=Endpoint.TRADESTATS, trading_date=date.today())
-        fx_orderstats_filename = await draw_plot(market=Market.CURRENCY, endpoint=Endpoint.ORDERSTATS, trading_date=date.today())
-        fx_obstats_filename = await draw_plot(market=Market.CURRENCY, endpoint=Endpoint.ORDERBOOKSTATS, trading_date=date.today())
-        fo_tradestats_filename = await draw_plot(market=Market.FUTURES, endpoint=Endpoint.TRADESTATS, trading_date=date.today())
-        fo_obstats_filename = await draw_plot(market=Market.FUTURES, endpoint=Endpoint.ORDERBOOKSTATS, trading_date=date.today())
+        eq_tradestats_filename = await self.iss_fetcher.draw_plot(market=Market.SHARES, endpoint=Endpoint.TRADESTATS, trading_date=date.today())
+        eq_orderstats_filename = await self.iss_fetcher.draw_plot(market=Market.SHARES, endpoint=Endpoint.ORDERSTATS, trading_date=date.today())
+        eq_obstats_filename = await self.iss_fetcher.draw_plot(market=Market.SHARES, endpoint=Endpoint.ORDERBOOKSTATS, trading_date=date.today())
+        fx_tradestats_filename = await self.iss_fetcher.draw_plot(market=Market.CURRENCY, endpoint=Endpoint.TRADESTATS, trading_date=date.today())
+        fx_orderstats_filename = await self.iss_fetcher.draw_plot(market=Market.CURRENCY, endpoint=Endpoint.ORDERSTATS, trading_date=date.today())
+        fx_obstats_filename = await self.iss_fetcher.draw_plot(market=Market.CURRENCY, endpoint=Endpoint.ORDERBOOKSTATS, trading_date=date.today())
+        fo_tradestats_filename = await self.iss_fetcher.draw_plot(market=Market.FUTURES, endpoint=Endpoint.TRADESTATS, trading_date=date.today())
+        fo_obstats_filename = await self.iss_fetcher.draw_plot(market=Market.FUTURES, endpoint=Endpoint.ORDERBOOKSTATS, trading_date=date.today())
+        #fo_futoi_filename = await self.iss_fetcher.draw_plot(market='fo', endpoint='futoi', trading_date=date.today())
         await send_plots(files=[eq_tradestats_filename, eq_orderstats_filename, eq_obstats_filename], market='eq')
         await send_plots(files=[fx_tradestats_filename, fx_orderstats_filename, fx_obstats_filename], market='fx')
         await send_plots(files=[fo_tradestats_filename, fo_obstats_filename], market='fo')
@@ -82,6 +84,7 @@ class TradingScheduler:
         os.remove(fx_obstats_filename)
         os.remove(fo_tradestats_filename)
         os.remove(fo_obstats_filename)
+        #os.remove(fo_futoi_filename)
 
     def list_jobs(self):
         jobs = self.scheduler.get_jobs()
@@ -147,10 +150,10 @@ class TradingScheduler:
 
     def run(self):
         self.run_jobs()
-        cron_trigger_send_plots = CronTrigger(hour=18, minute=55, second=0)
+        cron_trigger_send_plots = CronTrigger(hour=13, minute=20, second=0)
         self.scheduler.add_job(self.send_plots_to_chat, cron_trigger_send_plots, id="Send_plots")
 
-        hi2_cron_trigger = CronTrigger(hour=18, minute=52, second=0)
+        hi2_cron_trigger = CronTrigger(hour=13, minute=20, second=0)
         self.scheduler.add_job(self.hi2_checker, hi2_cron_trigger, id="hi2_check")
 
         cron_trigger_run_jobs = CronTrigger(hour=0, minute=0, second=0)
