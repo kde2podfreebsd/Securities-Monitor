@@ -150,10 +150,10 @@ class TradingScheduler:
 
     def run(self):
         self.run_jobs()
-        cron_trigger_send_plots = CronTrigger(hour=13, minute=20, second=0)
+        cron_trigger_send_plots = CronTrigger(hour=18, minute=55, second=0)
         self.scheduler.add_job(self.send_plots_to_chat, cron_trigger_send_plots, id="Send_plots")
 
-        hi2_cron_trigger = CronTrigger(hour=13, minute=20, second=0)
+        hi2_cron_trigger = CronTrigger(hour=18, minute=52, second=0)
         self.scheduler.add_job(self.hi2_checker, hi2_cron_trigger, id="hi2_check")
 
         cron_trigger_run_jobs = CronTrigger(hour=0, minute=0, second=0)
