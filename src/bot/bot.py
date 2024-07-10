@@ -31,11 +31,11 @@ class Bot:
 
         bot.setup_middleware(FloodingMiddleware(1))
 
-        self.scheduled_tasks = trading_scheduler
+        #self.scheduled_tasks = trading_scheduler
 
     async def polling(self):
         task1 = asyncio.create_task(bot.infinity_polling())
-        self.scheduled_tasks.run()
+        #self.scheduled_tasks.run()
         await task1
 
 

@@ -161,4 +161,6 @@ class TradingScheduler:
         self.scheduler.start()
         print(self.list_jobs())
 
-trading_scheduler = TradingScheduler()
+if __name__ == "__main__":
+    trading_scheduler = TradingScheduler()
+    trading_scheduler.scheduled_tasks.run()
