@@ -149,6 +149,7 @@ class ISSEndpointsFetcher(PassportMOEXAuth):
         for market in Market:
             data = await self.auth_request(url=f'https://iss.moex.com/iss/datashop/algopack/{market.value}/hi2.json')
             df = pd.DataFrame(data['data']['data'], columns=data['data']['columns'])
+            df['ts'] = pd.to_datetime(df['tradedate'] + ' ' + df['tradetime'])
             status = check_hi2(df=df)
             await send_hi2_alert(status=status, market=market)
 
