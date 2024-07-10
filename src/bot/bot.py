@@ -10,7 +10,6 @@ from telebot.asyncio_filters import (
 )
 from src.bot.config import bot
 from src.bot.handlers import *
-from src.scheduler import trading_scheduler
 
 load_dotenv()
 
