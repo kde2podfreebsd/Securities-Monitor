@@ -84,12 +84,12 @@ class ISSEndpointsFetcher(PassportMOEXAuth):
             await send_alert(market=market, delay=delay, endpoint=endpoint, url=url)
 
     async def tickers_count_fo_obstats(self) -> int:
-        url = f'https://iss.moex.com/iss/datashop/algopack/fo/obstats.json'
+        url_obstats = f'https://iss.moex.com/iss/datashop/algopack/fo/obstats.json'
                 
         all_data = []
         page_num = 0
         while True:
-            page_url = f'{url}?start={page_num * 1000}'
+            page_url = f'{url_obstats}?start={page_num * 1000}'
             data = await self.auth_request(url=page_url)                    
             columns = data['data']['columns']
             page_data = data['data']['data']
@@ -100,16 +100,41 @@ class ISSEndpointsFetcher(PassportMOEXAuth):
             all_data.extend(page_data)
             page_num += 1
 
-        df = pd.DataFrame(all_data, columns=columns)
-        df['tradedatetime'] = pd.to_datetime(df['tradedate'] + ' ' + df['tradetime'])
+        df_obstats = pd.DataFrame(all_data, columns=columns)
+        df_obstats['tradedatetime'] = pd.to_datetime(df_obstats['tradedate'] + ' ' + df_obstats['tradetime'])
+
+        #------------------------------------------------#
+
+        url_tradestats = f'https://iss.moex.com/iss/datashop/algopack/fo/tradestats.json'
+                
+        all_data = []
+        page_num = 0
+        while True:
+            page_url = f'{url_tradestats}?start={page_num * 1000}'
+            data = await self.auth_request(url=page_url)                    
+            columns = data['data']['columns']
+            page_data = data['data']['data']
+            
+            if not page_data or page_data is None:
+                break
+            
+            all_data.extend(page_data)
+            page_num += 1
+
+        df_tradestats = pd.DataFrame(all_data, columns=columns)
+        df_tradestats['tradedatetime'] = pd.to_datetime(df_tradestats['tradedate'] + ' ' + df_tradestats['tradetime'])
 
         now = datetime.now()
         rounded_minutes = (now.minute // 5) * 5
         current_interval = time(now.hour, rounded_minutes, 0)
 
-        df = df[df['tradedatetime'].dt.time == current_interval]
+        df_tradestats = df_tradestats[df_tradestats['tradedatetime'].dt.time == current_interval]
+        df_obstats = df_obstats[df_obstats['tradedatetime'].dt.time == current_interval]
 
-        return df['secid'].nunique(), current_interval
+        if df_obstats['secid'].nunique() <= df_tradestats['secid'].nunique():
+            return df_obstats['secid'].nunique(), current_interval
+        else:
+            return True, True
     
     async def check_hi2_status(self):
         def check_hi2(df: pd.DataFrame) -> bool:

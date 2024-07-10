@@ -19,20 +19,26 @@ class TradingScheduler:
         self.iss_fetcher = ISSEndpointsFetcher()
         self.moex_trading_calendar = MOEXTradingCalendar()
 
+        # EQ
         self.eq_session1_start_time = time(7, 5, 10)
-        self.eq_session1_end_time = time(18, 40, 50)
+        self.eq_session1_end_time = time(18, 45, 50)
+
         self.eq_session2_start_time = time(18, 50, 10)
-        self.eq_session2_end_time = time(23, 50, 50)
+        self.eq_session2_end_time = time(23, 55, 50)
 
+        # FX
         self.fx_session1_start_time = time(7, 5, 10)
-        self.fx_session1_end_time = time(18, 00, 50)
+        self.fx_session1_end_time = time(18, 55, 50)
 
+        # FO
         self.fo_session1_start_time = time(9, 5, 10)
-        self.fo_session1_end_time = time(14, 00, 50)
+        self.fo_session1_end_time = time(14, 5, 50)
+
         self.fo_session2_start_time = time(14, 10, 10)
-        self.fo_session2_end_time = time(18, 50, 50)
+        self.fo_session2_end_time = time(18, 55, 50)
+
         self.fo_session3_start_time = time(19, 10, 10)
-        self.fo_session3_end_time = time(23, 50, 50)
+        self.fo_session3_end_time = time(23, 55, 50)
 
         self.interval_minutes = int(os.getenv('INTERVAL_REQUEST'))
 
@@ -55,7 +61,9 @@ class TradingScheduler:
         if status:
             await self.iss_fetcher.process_market_endpoints(Market.FUTURES, date.today())
             fo_obstats_count_tickers, current_interval = await self.iss_fetcher.tickers_count_fo_obstats()
-            await send_fo_obstats_tickers_count(count=fo_obstats_count_tickers, trading_time=current_interval)
+            if fo_obstats_count_tickers != True:
+                await send_fo_obstats_tickers_count(count=fo_obstats_count_tickers, trading_time=current_interval)
+                
             await self.iss_fetcher.futoi_delay_notifications(date.today())
         else:
             print(f"{date.today()} is not trading date")
