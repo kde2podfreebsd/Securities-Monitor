@@ -58,6 +58,9 @@ class TradingScheduler:
         else:
             print(f"{date.today()} is not trading date")
 
+    async def hi2_checker(self):
+        await self.iss_fetcher.check_hi2_status()
+
     async def send_plots_to_chat(self):
         eq_tradestats_filename = await draw_plot(market=Market.SHARES, endpoint=Endpoint.TRADESTATS, trading_date=date.today())
         eq_orderstats_filename = await draw_plot(market=Market.SHARES, endpoint=Endpoint.ORDERSTATS, trading_date=date.today())
@@ -146,6 +149,10 @@ class TradingScheduler:
         self.run_jobs()
         cron_trigger_send_plots = CronTrigger(hour=18, minute=55, second=0)
         self.scheduler.add_job(self.send_plots_to_chat, cron_trigger_send_plots, id="Send_plots")
+
+        hi2_cron_trigger = CronTrigger(hour=18, minute=52, second=0)
+        self.scheduler.add_job(self.hi2_checker, hi2_cron_trigger, id="hi2_check")
+
         cron_trigger_run_jobs = CronTrigger(hour=0, minute=0, second=0)
         self.scheduler.add_job(self.run_jobs, cron_trigger_run_jobs, id="Daily_run_jobs")
         self.scheduler.start()

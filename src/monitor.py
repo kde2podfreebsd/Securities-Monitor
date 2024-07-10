@@ -5,7 +5,7 @@ from datetime import date, datetime, time
 from dotenv import load_dotenv
 from src.passport import PassportMOEXAuth
 from typing import List
-from src.bot.handlers.alerts import send_alert
+from src.bot.handlers.alerts import send_alert, send_hi2_alert
 import asyncio
 
 class Market(enum.Enum):
@@ -125,6 +125,23 @@ class ISSEndpointsFetcher(PassportMOEXAuth):
         df = df[df['tradedatetime'].dt.time == current_interval]
 
         return df['secid'].nunique(), current_interval
+    
+    async def check_hi2_status(self):
+        def check_hi2(df: pd.DataFrame) -> bool:
+            if df.shape[0] != 0:
+                if 'ts' in df.columns and df.loc[0, 'ts'].date() == date.today():
+                    return True
+                else:
+                    return False
+            else:
+                return False
+        
+        for market in Market:
+            data = await self.auth_request(url=f'https://iss.moex.com/iss/datashop/algopack/{market.value}/hi2.json')
+            df = pd.DataFrame(data['data']['data'], columns=data['data']['columns'])
+            status = check_hi2(df=df)
+            await send_hi2_alert(status=status, market=market)
+        
 
     async def process_market_endpoints(self, market: Market, date: date) -> None:
         secid_for_market = {

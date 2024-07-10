@@ -26,6 +26,16 @@ async def send_alert(market, delay, endpoint, url):
         )
     )
 
+async def send_hi2_alert(status: bool, market):
+    message = f"Для маркета {market.value} HI2: {'Значения на сегодняшний день присутствуют' if status else 'Значения на сегодняшний день отсутствуют'}"
+    await bot.send_message(
+        chat_id=os.getenv('TELEGRAM_GROUP_CHATID'),
+        text=message,
+        reply_markup=types.InlineKeyboardMarkup().add(
+            types.InlineKeyboardButton("ISS", url=f"https://iss.moex.com/iss/datashop/algopack/{market.value}/hi2")
+        )
+    )
+
 
 async def send_fo_obstats_tickers_count(count: int, trading_time: datetime.time):
     await bot.send_message(
