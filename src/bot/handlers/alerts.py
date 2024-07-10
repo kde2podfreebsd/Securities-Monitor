@@ -20,7 +20,7 @@ async def send_alert(market, delay, endpoint, url):
     
     await bot.send_message(
         chat_id=os.getenv('TELEGRAM_GROUP_CHATID'),
-        text=f"{text_for_market[market.value]} | {endpoint.value}\nЗадержка: {delay}",
+        text=f"{text_for_market[market.value]} | {endpoint.value}\nЗадержка: {delay}. Время запроса: {datetime.datetime.now()}",
         reply_markup=types.InlineKeyboardMarkup().add(
             types.InlineKeyboardButton("ISS", url=url)
         )
@@ -30,7 +30,7 @@ async def send_alert(market, delay, endpoint, url):
 async def send_fo_obstats_tickers_count(count: int, trading_time: datetime.time):
     await bot.send_message(
         chat_id=os.getenv('TELEGRAM_GROUP_CHATID'),
-        text=f"Количество уникальных тикеров для {trading_time}: {count}"
+        text=f"Количество уникальных тикеров для FO OBSTATS {trading_time}: {count}"
     )
 
 
