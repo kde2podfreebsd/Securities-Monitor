@@ -23,7 +23,7 @@ async def send_alert(market, delay, endpoint, url):
             "eq": 'EQ | Акции',
             "fx": "FX | Валюта",
             "fo": "FO | Фьючерсы",
-            "futoi": "FO | Фьючерсы"
+            "futoi": "FUTOI"
         }
     
     current_time = round_to_nearest_second(datetime.datetime.now())
@@ -31,17 +31,18 @@ async def send_alert(market, delay, endpoint, url):
     if endpoint == 'futoi':
         await bot.send_message(
         chat_id=os.getenv('TELEGRAM_GROUP_CHATID'),
-        text=f"{text_for_market[market]} | {endpoint}\nЗадержка: {delay}. Время запроса: {current_time}",
+        text=f"❗️Alert\n{text_for_market[market]} | {endpoint}\nЗадержка: {delay} секунд.\nВремя запроса: {current_time}",
         reply_markup=types.InlineKeyboardMarkup().add(
-            types.InlineKeyboardButton("ISS", url=url)
+            types.InlineKeyboardButton(f"FUTOI ISS", url=url)
         )
     )
+        
     else:
         await bot.send_message(
             chat_id=os.getenv('TELEGRAM_GROUP_CHATID'),
-            text=f"{text_for_market[market.value]} | {endpoint.value}\nЗадержка: {delay}. Время запроса: {current_time}",
+            text=f"❗️Alert\n{text_for_market[market.value]} | {endpoint.value}\nЗадержка: {delay} секунд.\nВремя запроса: {current_time}",
             reply_markup=types.InlineKeyboardMarkup().add(
-                types.InlineKeyboardButton("ISS", url=url)
+                types.InlineKeyboardButton(f"{text_for_market[market.value]} ISS", url=url)
             )
         )
 
@@ -53,20 +54,20 @@ async def error_alert(market, endpoint):
     )
 
 async def send_hi2_alert(status: bool, market):
-    message = f"Для маркета {market.value} HI2: {'Значения на сегодняшний день присутствуют' if status else 'Значения на сегодняшний день отсутствуют'}"
+    message = f'Для {market.value} HI2: {f"Значения на дату {date.today()} присутствуют ✅" if status else f"Значения на дату {date.today()} отсутствуют ❌"}'
     await bot.send_message(
         chat_id=os.getenv('TELEGRAM_GROUP_CHATID'),
         text=message,
         reply_markup=types.InlineKeyboardMarkup().add(
-            types.InlineKeyboardButton("ISS", url=f"https://iss.moex.com/iss/datashop/algopack/{market.value}/hi2")
+            types.InlineKeyboardButton(f"{market.value} hi2 ISS", url=f"https://iss.moex.com/iss/datashop/algopack/{market.value}/hi2")
         )
     )
 
 
-async def send_fo_obstats_tickers_count(count: int, trading_time: datetime.time):
+async def send_fo_obstats_tickers_count(fo_obstats_count_tickers: int, fo_tradestats_count_tickers: int, trading_time: datetime.time):
     await bot.send_message(
         chat_id=os.getenv('TELEGRAM_GROUP_CHATID'),
-        text=f"Количество уникальных тикеров для FO OBSTATS {trading_time}: {count}"
+        text=f"❗️Alert\nКоличество уникальных тикеров для FO OBstats: {fo_obstats_count_tickers} > чем тикеров FO Tradestats: {fo_tradestats_count_tickers}"
     )
 
 async def send_plots(files: list, market):
@@ -74,7 +75,7 @@ async def send_plots(files: list, market):
         i = 0
         for photo in files:
             i += 1
-            media_group.append(types.InputMediaPhoto(open(photo, 'rb'), caption=f"{market} delays" if i == 1 else None))
+            media_group.append(types.InputMediaPhoto(open(photo, 'rb'), caption=f"Дневные задержки для {market} на {date.today()}" if i == 1 else None))
         
         await bot.send_media_group(os.getenv("TELEGRAM_GROUP_CHATID"), media_group)
 

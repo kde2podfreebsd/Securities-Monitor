@@ -130,15 +130,12 @@ class ISSEndpointsFetcher(PassportMOEXAuth):
 
         df_tradestats = df_tradestats[df_tradestats['tradedatetime'].dt.time == current_interval]
         df_obstats = df_obstats[df_obstats['tradedatetime'].dt.time == current_interval]
-
-        if df_obstats['secid'].nunique() <= df_tradestats['secid'].nunique():
-            return df_obstats['secid'].nunique(), current_interval
-        else:
-            return True, True
+        
+        return df_obstats['secid'].nunique(), df_tradestats['secid'].nunique(), current_interval
     
     async def check_hi2_status(self):
         def check_hi2(df: pd.DataFrame) -> bool:
-            if df.shape[0] != 0:
+            if df.shape[0] != 0 and df is not None:
                 if 'ts' in df.columns and df.loc[0, 'ts'].date() == date.today():
                     return True
                 else:
@@ -199,39 +196,39 @@ class ISSEndpointsFetcher(PassportMOEXAuth):
             "fo": await self.find_liquid_fo_secid(),
             "futoi": 'RI'
         }
-        
-        url = f'https://iss.moex.com/iss/datashop/algopack/{market}/{endpoint}/{secid_for_market[market]}.json'
 
         if endpoint == 'futoi':
-            url='https://iss.moex.com/iss/analyticalproducts/futoi/securities/ri.json'
+            url=f'https://iss.moex.com/iss/analyticalproducts/futoi/securities/ri.json?from={date.today().strftime("%Y-%m-%d")}&till={date.today().strftime("%Y-%m-%d")}'
+            data = await self.auth_request(url=url)
+            columns = data['futoi']['columns']
+            all_data = data['futoi']['data']
+
+        else:
+            url = f'https://iss.moex.com/iss/datashop/algopack/{market}/{endpoint}/{secid_for_market[market]}.json'
                 
-        all_data = []
-        page_num = 0
-        
-        while True:
-            page_url = f'{url}?start={page_num * 1000}'
-            data = await self.auth_request(url=page_url)
-            if endpoint == 'futoi':
-                columns = data['futoi']['columns']
-                page_data = data['futoi']['data']
-            else:                    
+            all_data = []
+            page_num = 0
+            
+            while True:
+                page_url = f'{url}?start={page_num * 1000}'
+                data = await self.auth_request(url=page_url)     
                 columns = data['data']['columns']
                 page_data = data['data']['data']
-            
-            if not page_data or page_data is None:
-                break
-            
-            all_data.extend(page_data)
-            page_num += 1
+                
+                if not page_data or page_data is None:
+                    break
+                
+                all_data.extend(page_data)
+                page_num += 1
 
         df = pd.DataFrame(all_data, columns=columns)
 
         if endpoint == 'futoi':
             columns = ['SYSTIME', 'ts', 'tradedate', 'tradetime']
-            dataframe.rename(columns={'systime': 'SYSTIME'}, inplace=True)
-            dataframe['ts'] = pd.to_datetime(dataframe['tradedate'] + ' ' + dataframe['tradetime'])
-            dataframe = dataframe[columns].copy()
-            df_reversed = dataframe.sort_index(ascending=False).reset_index(drop=True)
+            df.rename(columns={'systime': 'SYSTIME'}, inplace=True)
+            df['ts'] = pd.to_datetime(df['tradedate'] + ' ' + df['tradetime'])
+            df = df[columns].copy()
+            df_reversed = df.sort_index(ascending=False).reset_index(drop=True)
             df = df_reversed[df_reversed['tradedate'] == date.today().strftime('%Y-%m-%d')]
             
         df['tradetime'] = pd.to_datetime(df['tradedate'] + ' ' + df['tradetime'])
@@ -254,7 +251,7 @@ class ISSEndpointsFetcher(PassportMOEXAuth):
         plt.ylim(0, df['delay'].max() + 50)
 
         median_delay = df['delay'].median()
-        mean_delay = df['delay'].mean()
+        mean_delay = round(df['delay'].mean(), 2)
         max_delay = df['delay'].max()
         min_delay = df['delay'].min()
 
@@ -289,6 +286,7 @@ if __name__ == '__main__':
     async def test_fetch_data():
         fetcher = ISSEndpointsFetcher()
         trading_date = date.today()
-        await fetcher.process_market_endpoints(market=Market.FUTURES, date=trading_date)
+        #await fetcher.process_market_endpoints(market=Market.FUTURES, date=trading_date)
+        await fetcher.draw_plot(market=Market.FUTURES, endpoint='futoi', trading_date=trading_date)
 
     asyncio.run(test_fetch_data())
