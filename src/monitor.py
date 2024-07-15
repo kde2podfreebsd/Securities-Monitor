@@ -286,7 +286,7 @@ if __name__ == '__main__':
     async def test_fetch_data():
         fetcher = ISSEndpointsFetcher()
         trading_date = date.today()
-        #await fetcher.process_market_endpoints(market=Market.FUTURES, date=trading_date)
-        await fetcher.draw_plot(market=Market.FUTURES, endpoint='futoi', trading_date=trading_date)
+        await fetcher.process_market_endpoints(market=Market.SHARES, date=trading_date)
+        #await fetcher.draw_plot(market=Market.SHARES, endpoint=Endpoint.TRADESTATS, trading_date=trading_date)
 
     asyncio.run(test_fetch_data())

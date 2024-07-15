@@ -183,7 +183,7 @@ class TradingScheduler(cmd.Cmd):
 
     async def command_interface(self, loop):
         class CommandProcessor(cmd.Cmd):
-            prompt = '> jobs - print current jobs list'
+            prompt = '> print current jobs list - jobs:   '
 
             def do_jobs(self, arg):
                 print(trading_scheduler.list_jobs())

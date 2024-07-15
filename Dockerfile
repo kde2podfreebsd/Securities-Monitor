@@ -15,8 +15,6 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
-COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
-
 ENV PYTHONPATH "${PYTHONPATH}:/app"
 
-CMD ["supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]
+CMD ["sh", "-c", "python /app/src/bot/bot.py & python /app/src/scheduler.py"]
