@@ -174,8 +174,9 @@ Function: <bound method TradingScheduler.run_jobs of <__main__.TradingScheduler 
 --------------------
 ```
 
+Для остановки приложения.
 ```.sh
-
+> exit
 ```
 
 ### ВАЖНО!
