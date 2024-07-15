@@ -105,33 +105,21 @@ class ISSEndpointsFetcher(PassportMOEXAuth):
 
         #------------------------------------------------#
 
-        url_tradestats = f'https://iss.moex.com/iss/datashop/algopack/fo/tradestats.json'
+        fo_securities_url = f'https://iss.moex.com/iss/engines/futures/markets/forts/boards/rfud/securities.json'
                 
-        all_data = []
-        page_num = 0
-        while True:
-            page_url = f'{url_tradestats}?start={page_num * 1000}'
-            data = await self.auth_request(url=page_url)                    
-            columns = data['data']['columns']
-            page_data = data['data']['data']
-            
-            if not page_data or page_data is None:
-                break
-            
-            all_data.extend(page_data)
-            page_num += 1
+        data = await self.auth_request(url=fo_securities_url)                    
+        columns = data['securities']['columns']
+        all_data = data['securities']['data']
 
-        df_tradestats = pd.DataFrame(all_data, columns=columns)
-        df_tradestats['tradedatetime'] = pd.to_datetime(df_tradestats['tradedate'] + ' ' + df_tradestats['tradetime'])
+        df_fo_securities = pd.DataFrame(all_data, columns=columns)
 
         now = datetime.now()
         rounded_minutes = (now.minute // 5) * 5
         current_interval = time(now.hour, rounded_minutes, 0)
 
-        df_tradestats = df_tradestats[df_tradestats['tradedatetime'].dt.time == current_interval]
         df_obstats = df_obstats[df_obstats['tradedatetime'].dt.time == current_interval]
         
-        return df_obstats['secid'].nunique(), df_tradestats['secid'].nunique(), current_interval
+        return df_obstats['secid'].nunique(), df_fo_securities['SECID'].nunique(), current_interval
     
     async def check_hi2_status(self):
         def check_hi2(df: pd.DataFrame) -> bool:
@@ -286,7 +274,8 @@ if __name__ == '__main__':
     async def test_fetch_data():
         fetcher = ISSEndpointsFetcher()
         trading_date = date.today()
-        await fetcher.process_market_endpoints(market=Market.SHARES, date=trading_date)
+        #await fetcher.process_market_endpoints(market=Market.SHARES, date=trading_date)
         #await fetcher.draw_plot(market=Market.SHARES, endpoint=Endpoint.TRADESTATS, trading_date=trading_date)
+        print(await fetcher.tickers_count_fo_obstats())
 
     asyncio.run(test_fetch_data())
