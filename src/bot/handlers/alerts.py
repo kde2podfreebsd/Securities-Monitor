@@ -67,7 +67,7 @@ async def send_hi2_alert(status: bool, market):
 async def send_fo_obstats_tickers_count(fo_obstats_count_tickers: int, fo_tradestats_count_tickers: int, trading_time: datetime.time):
     await bot.send_message(
         chat_id=os.getenv('TELEGRAM_GROUP_CHATID'),
-        text=f"❗️Alert\nКоличество уникальных тикеров для FO OBstats: {fo_obstats_count_tickers} > чем тикеров FO Tradestats: {fo_tradestats_count_tickers}"
+        text=f"❗️Alert\nКоличество уникальных тикеров для FO OBstats: {fo_obstats_count_tickers}. securities count: {fo_tradestats_count_tickers}"
     )
 
 async def send_plots(files: list, market):
