@@ -9,12 +9,14 @@ from src.trading_calendar import MOEXTradingCalendar
 from src.monitor import Market, Endpoint
 from src.bot.handlers.alerts import send_fo_obstats_tickers_count, send_plots
 import asyncio
+import cmd
 
 load_dotenv()
 
-class TradingScheduler:
+class TradingScheduler(cmd.Cmd):
 
     def __init__(self):
+        super().__init__()
         self.scheduler = AsyncIOScheduler(job_defaults={'max_instances': 2})
         self.iss_fetcher = ISSEndpointsFetcher()
         self.moex_trading_calendar = MOEXTradingCalendar()
@@ -63,7 +65,11 @@ class TradingScheduler:
             fo_obstats_count_tickers, fo_tradestats_count_tickers, current_interval = await self.iss_fetcher.tickers_count_fo_obstats()
 
             if fo_obstats_count_tickers < fo_tradestats_count_tickers:
-                await send_fo_obstats_tickers_count(fo_obstats_count_tickers=fo_obstats_count_tickers, fo_tradestats_count_tickers=fo_tradestats_count_tickers, trading_time=current_interval)
+                await send_fo_obstats_tickers_count(
+                    fo_obstats_count_tickers=fo_obstats_count_tickers,
+                    fo_tradestats_count_tickers=fo_tradestats_count_tickers,
+                    trading_time=current_interval
+                    )
                 
             await self.iss_fetcher.futoi_delay_notifications(date.today())
         else:
@@ -160,10 +166,10 @@ class TradingScheduler:
 
     def run(self):
         self.run_jobs()
-        cron_trigger_send_plots = CronTrigger(hour=16, minute=27, second=20)
+        cron_trigger_send_plots = CronTrigger(hour=19, minute=2, second=5)
         self.scheduler.add_job(self.send_plots_to_chat, cron_trigger_send_plots, id="Send_plots")
 
-        hi2_cron_trigger = CronTrigger(hour=16, minute=25, second=30)
+        hi2_cron_trigger = CronTrigger(hour=19, minute=3, second=30)
         self.scheduler.add_job(self.hi2_checker, hi2_cron_trigger, id="hi2_check")
 
         cron_trigger_run_jobs = CronTrigger(hour=0, minute=0, second=0)
@@ -171,7 +177,24 @@ class TradingScheduler:
         self.scheduler.start()
         print(self.list_jobs())
 
-        asyncio.get_event_loop().run_forever()
+        loop = asyncio.get_event_loop()
+        loop.create_task(self.command_interface(loop))
+        loop.run_forever()
+
+    async def command_interface(self, loop):
+        class CommandProcessor(cmd.Cmd):
+            prompt = '> jobs - print current jobs list'
+
+            def do_jobs(self, arg):
+                print(trading_scheduler.list_jobs())
+
+            def do_exit(self, arg):
+                print("Exiting...")
+                loop.stop()
+                return True
+
+        processor = CommandProcessor()
+        await loop.run_in_executor(None, processor.cmdloop)
 
 if __name__ == "__main__":
     trading_scheduler = TradingScheduler()
