@@ -73,7 +73,7 @@ class TradingScheduler(cmd.Cmd):
             #         trading_time=current_interval
             #         )
             #######################################
-            
+
             await self.iss_fetcher.futoi_delay_notifications(date.today())
         else:
             print(f"{date.today()} is not trading date")
@@ -172,7 +172,7 @@ class TradingScheduler(cmd.Cmd):
         cron_trigger_send_plots = CronTrigger(hour=19, minute=2, second=5)
         self.scheduler.add_job(self.send_plots_to_chat, cron_trigger_send_plots, id="Send_plots")
 
-        hi2_cron_trigger = CronTrigger(hour=15, minute=2, second=5)
+        hi2_cron_trigger = CronTrigger(hour=19, minute=3, second=30)
         self.scheduler.add_job(self.hi2_checker, hi2_cron_trigger, id="hi2_check")
 
         cron_trigger_run_jobs = CronTrigger(hour=0, minute=0, second=0)
