@@ -17,7 +17,7 @@ class TradingScheduler(cmd.Cmd):
 
     def __init__(self):
         super().__init__()
-        self.scheduler = AsyncIOScheduler(job_defaults={'max_instances': 2})
+        self.scheduler = AsyncIOScheduler(job_defaults={'max_instances': 100})
         self.iss_fetcher = ISSEndpointsFetcher()
         self.moex_trading_calendar = MOEXTradingCalendar()
 
@@ -33,7 +33,7 @@ class TradingScheduler(cmd.Cmd):
         self.fx_session1_end_time = time(19, 0, 50)
 
         # FO
-        self.fo_session1_start_time = time(9, 5, 10)
+        self.fo_session1_start_time = time(10, 5, 10)
         self.fo_session1_end_time = time(14, 0, 50)
 
         self.fo_session2_start_time = time(14, 10, 10)
@@ -62,14 +62,14 @@ class TradingScheduler(cmd.Cmd):
         status = self.moex_trading_calendar.get_status(trading_date=date.today())
         if status:
             await self.iss_fetcher.process_market_endpoints(Market.FUTURES, date.today())
-            fo_obstats_count_tickers, fo_tradestats_count_tickers, current_interval = await self.iss_fetcher.tickers_count_fo_obstats()
+            # fo_obstats_count_tickers, fo_tradestats_count_tickers, current_interval = await self.iss_fetcher.tickers_count_fo_obstats()
 
-            if fo_obstats_count_tickers < fo_tradestats_count_tickers:
-                await send_fo_obstats_tickers_count(
-                    fo_obstats_count_tickers=fo_obstats_count_tickers,
-                    fo_tradestats_count_tickers=fo_tradestats_count_tickers,
-                    trading_time=current_interval
-                    )
+            # if fo_obstats_count_tickers < fo_tradestats_count_tickers:
+            #     await send_fo_obstats_tickers_count(
+            #         fo_obstats_count_tickers=fo_obstats_count_tickers,
+            #         fo_tradestats_count_tickers=fo_tradestats_count_tickers,
+            #         trading_time=current_interval
+            #         )
                 
             await self.iss_fetcher.futoi_delay_notifications(date.today())
         else:
@@ -130,7 +130,7 @@ class TradingScheduler(cmd.Cmd):
         )
 
         self.scheduler.add_job(self.eq_monitoring_delays, eq_session1_interval_trigger, id="EQ1", max_instances=1, misfire_grace_time=600)
-        #self.scheduler.add_job(self.eq_monitoring_delays, eq_session2_interval_trigger, id="EQ2", max_instances=1, misfire_grace_time=600)
+        self.scheduler.add_job(self.eq_monitoring_delays, eq_session2_interval_trigger, id="EQ2", max_instances=1, misfire_grace_time=600)
 
         # FX
         fx_session1_interval_trigger = IntervalTrigger(
@@ -169,7 +169,7 @@ class TradingScheduler(cmd.Cmd):
         cron_trigger_send_plots = CronTrigger(hour=19, minute=2, second=5)
         self.scheduler.add_job(self.send_plots_to_chat, cron_trigger_send_plots, id="Send_plots")
 
-        hi2_cron_trigger = CronTrigger(hour=19, minute=3, second=30)
+        hi2_cron_trigger = CronTrigger(hour=15, minute=2, second=5)
         self.scheduler.add_job(self.hi2_checker, hi2_cron_trigger, id="hi2_check")
 
         cron_trigger_run_jobs = CronTrigger(hour=0, minute=0, second=0)

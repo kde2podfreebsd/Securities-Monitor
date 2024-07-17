@@ -53,13 +53,23 @@ async def error_alert(market, endpoint):
         text=f"Проблема с получением данных для маркета {market.value} | {endpoint.value}"
     )
 
-async def send_hi2_alert(status: bool, market):
-    message = f'Для {market.value} HI2: {f"Значения на дату {date.today()} присутствуют ✅" if status else f"Значения на дату {date.today()} отсутствуют ❌"}'
+async def send_hi2_alert(status: dict):
+
+    message = ''
+
+    for key, value in status.items():
+        if value:
+            message += f'{date.today()} {key} hi2 - ✅\n'
+        else:
+            message += f'{date.today()} {key} hi2 - ❌\n'
+
     await bot.send_message(
         chat_id=os.getenv('TELEGRAM_GROUP_CHATID'),
         text=message,
         reply_markup=types.InlineKeyboardMarkup().add(
-            types.InlineKeyboardButton(f"{market.value} hi2 ISS", url=f"https://iss.moex.com/iss/datashop/algopack/{market.value}/hi2")
+            types.InlineKeyboardButton(f"EQ HI2 ISS", url=f"https://iss.moex.com/iss/datashop/algopack/eq/hi2"),
+            types.InlineKeyboardButton(f"FX HI2 ISS", url=f"https://iss.moex.com/iss/datashop/algopack/fx/hi2"),
+            types.InlineKeyboardButton(f"FO HI2 ISS", url=f"https://iss.moex.com/iss/datashop/algopack/fo/hi2")
         )
     )
 

@@ -58,16 +58,22 @@ class ISSEndpointsFetcher(PassportMOEXAuth):
             f'https://iss.moex.com/iss/datashop/algopack/{market.value}/'
             f'{endpoint.value}/{security}.json?from={formatted_date}&till={formatted_date}'
         )
-        try:
-
-            data = await self.auth_request(url=url)                    
-            df = self._prepare_dataframe(data)
-            
-            return df, url.replace(".json", "")
-        
-        except Exception as e:
-            print(f'An error occurred: {e}')
-            return None, None
+        error_count = 0
+        while error_count < 3:
+            try:
+                data = await self.auth_request(url=url)                    
+                df = self._prepare_dataframe(data)
+                if df.equals(self._prepare_dataframe(data)):
+                    return df, url.replace(".json", "")
+            except Exception as e:
+                print(f'An error occurred: {e}')
+                error_count += 1
+                if error_count == 3:
+                    print('Max number of retries reached')
+                    return None, None
+            await asyncio.sleep(1)
+        print('Max number of retries reached')
+        return None, None
     
     async def find_liquid_fo_secid(self) -> str:
         url = f'https://iss.moex.com/iss/datashop/algopack/fo/tradestats.json?iss.only=data'
@@ -130,13 +136,20 @@ class ISSEndpointsFetcher(PassportMOEXAuth):
                     return False
             else:
                 return False
+            
+        hi2_status = {
+            "eq": False,
+            "fx": False,
+            "fo": False
+        }
         
         for market in Market:
             data = await self.auth_request(url=f'https://iss.moex.com/iss/datashop/algopack/{market.value}/hi2.json')
             df = pd.DataFrame(data['data']['data'], columns=data['data']['columns'])
             df['ts'] = pd.to_datetime(df['tradedate'] + ' ' + df['tradetime'])
-            status = check_hi2(df=df)
-            await send_hi2_alert(status=status, market=market)
+            hi2_status[market.value] = check_hi2(df=df)
+
+        await send_hi2_alert(status=hi2_status)
 
     async def futoi_delay_notifications(self, date: date) -> None:
         formatted_date = date.strftime('%Y-%m-%d')
@@ -161,8 +174,9 @@ class ISSEndpointsFetcher(PassportMOEXAuth):
         async def fetch_and_process_data(endpoint):
             df, url = await self.fetch_data(market, endpoint, secid_for_market[market.value], date)
             if df is None:
-                await error_alert(market, endpoint)
-            await self.send_alert_if_delayed(market=market, endpoint=endpoint, df=df, url=url)
+                print(f"Error: {market.value}, {endpoint.value}, {date}")
+            else:
+                await self.send_alert_if_delayed(market=market, endpoint=endpoint, df=df, url=url)
 
         tasks = []
         for endpoint in Endpoint:
