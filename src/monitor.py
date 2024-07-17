@@ -174,7 +174,7 @@ class ISSEndpointsFetcher(PassportMOEXAuth):
         async def fetch_and_process_data(endpoint):
             df, url = await self.fetch_data(market, endpoint, secid_for_market[market.value], date)
             if df is None:
-                print(f"Error: {market.value}, {endpoint.value}, {date}")
+                await error_alert(market=market, endpoint=endpoint)
             else:
                 await self.send_alert_if_delayed(market=market, endpoint=endpoint, df=df, url=url)
 
