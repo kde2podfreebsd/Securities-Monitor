@@ -203,17 +203,17 @@ class ISSEndpointsFetcher(PassportMOEXAuth):
             df, url = await self.fetch_data(market, endpoint, secid_for_market[market.value], date)
             if market.value == 'eq':
                 if len(self.find_missing_intervals(df, eq_sessions)) == 0:
-                    missing_intervals += ''
+                    pass
                 else:
                     missing_intervals += f"Missing intervals EQ {endpoint.value}: {[start_time.strftime('%H:%M') for start_time in self.find_missing_intervals(df, eq_sessions)]}\n\n"
             if market.value == 'fx':
                 if len(self.find_missing_intervals(df, fx_sessions)) == 0:
-                    missing_intervals += ''
+                    pass
                 else:
                     missing_intervals += f"Missing intervals FX {endpoint.value}: {[start_time.strftime('%H:%M') for start_time in self.find_missing_intervals(df, fx_sessions)]}\n\n"
             if market.value == 'fo':
                 if len(self.find_missing_intervals(df, fo_sessions)) == 0:
-                    missing_intervals += ''
+                    pass
                 else:
                     missing_intervals += f"Missing intervals FO {endpoint.value}: {[start_time.strftime('%H:%M') for start_time in self.find_missing_intervals(df, fo_sessions)]}\n\n"
 
