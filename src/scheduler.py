@@ -30,7 +30,7 @@ class TradingScheduler(cmd.Cmd):
 
         # FX
         self.fx_session1_start_time = time(10, 10, 30)
-        self.fx_session1_end_time = time(19, 0, 50)
+        self.fx_session1_end_time = time(18, 55, 50)
 
         # FO
         self.fo_session1_start_time = time(10, 10, 30)
@@ -169,10 +169,10 @@ class TradingScheduler(cmd.Cmd):
 
     def run(self):
         self.run_jobs()
-        cron_trigger_send_plots = CronTrigger(hour=18, minute=27, second=5)
+        cron_trigger_send_plots = CronTrigger(hour=19, minute=1, second=10)
         self.scheduler.add_job(self.send_plots_to_chat, cron_trigger_send_plots, id="Send_plots")
 
-        hi2_cron_trigger = CronTrigger(hour=19, minute=3, second=30)
+        hi2_cron_trigger = CronTrigger(hour=19, minute=2, second=30)
         self.scheduler.add_job(self.hi2_checker, hi2_cron_trigger, id="hi2_check")
 
         cron_trigger_run_jobs = CronTrigger(hour=0, minute=0, second=0)
