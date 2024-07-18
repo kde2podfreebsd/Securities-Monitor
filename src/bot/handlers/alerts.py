@@ -80,6 +80,13 @@ async def send_fo_obstats_tickers_count(fo_obstats_count_tickers: int, fo_trades
         text=f"❗️Alert\nКоличество уникальных тикеров для FO OBstats: {fo_obstats_count_tickers}. securities count: {fo_tradestats_count_tickers}"
     )
 
+async def send_missing_intervals_alert(missing_intervals: str):
+
+    await bot.send_message(
+        chat_id=os.getenv('TELEGRAM_GROUP_CHATID'),
+        text=f"❗️Alert | Пропущенные интервалы\n{missing_intervals}"
+    )
+
 async def send_plots(files: list, market):
         media_group = []
         i = 0
@@ -96,4 +103,6 @@ async def get_chat_info(message):
     chat_type = message.chat.type
     chat_title = message.chat.title
     await bot.send_message(message.chat.id, f'ID чата: {chat_id}\nТип чата: {chat_type}\nНазвание чата: {chat_title}')
+
+
 

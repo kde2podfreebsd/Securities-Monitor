@@ -22,24 +22,24 @@ class TradingScheduler(cmd.Cmd):
         self.moex_trading_calendar = MOEXTradingCalendar()
 
         # EQ
-        self.eq_session1_start_time = time(10, 10, 10)
+        self.eq_session1_start_time = time(10, 10, 30)
         self.eq_session1_end_time = time(18, 40, 50)
 
-        self.eq_session2_start_time = time(19, 15, 10)
+        self.eq_session2_start_time = time(19, 15, 30)
         self.eq_session2_end_time = time(23, 50, 50)
 
         # FX
-        self.fx_session1_start_time = time(10, 10, 10)
+        self.fx_session1_start_time = time(10, 10, 30)
         self.fx_session1_end_time = time(19, 0, 50)
 
         # FO
-        self.fo_session1_start_time = time(10, 10, 10)
+        self.fo_session1_start_time = time(10, 10, 30)
         self.fo_session1_end_time = time(14, 0, 50)
 
-        self.fo_session2_start_time = time(14, 15, 10)
+        self.fo_session2_start_time = time(14, 15, 30)
         self.fo_session2_end_time = time(18, 50, 50)
 
-        self.fo_session3_start_time = time(19, 15, 10)
+        self.fo_session3_start_time = time(19, 15, 30)
         self.fo_session3_end_time = time(23, 50, 50)
 
         self.interval_minutes = int(os.getenv('INTERVAL_REQUEST'))
@@ -63,7 +63,7 @@ class TradingScheduler(cmd.Cmd):
         if status:
             await self.iss_fetcher.process_market_endpoints(Market.FUTURES, date.today())
 
-            #######################################
+            ######################################
             # fo_obstats_count_tickers, fo_tradestats_count_tickers, current_interval = await self.iss_fetcher.tickers_count_fo_obstats()
 
             # if fo_obstats_count_tickers < fo_tradestats_count_tickers:
@@ -72,7 +72,7 @@ class TradingScheduler(cmd.Cmd):
             #         fo_tradestats_count_tickers=fo_tradestats_count_tickers,
             #         trading_time=current_interval
             #         )
-            #######################################
+            ######################################
 
             await self.iss_fetcher.futoi_delay_notifications(date.today())
         else:
@@ -169,7 +169,7 @@ class TradingScheduler(cmd.Cmd):
 
     def run(self):
         self.run_jobs()
-        cron_trigger_send_plots = CronTrigger(hour=19, minute=2, second=5)
+        cron_trigger_send_plots = CronTrigger(hour=18, minute=27, second=5)
         self.scheduler.add_job(self.send_plots_to_chat, cron_trigger_send_plots, id="Send_plots")
 
         hi2_cron_trigger = CronTrigger(hour=19, minute=3, second=30)

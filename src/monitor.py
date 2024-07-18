@@ -5,9 +5,25 @@ from datetime import date, datetime, time
 from dotenv import load_dotenv
 from src.passport import PassportMOEXAuth
 from typing import List
-from src.bot.handlers.alerts import send_alert, send_hi2_alert, error_alert
+from src.bot.handlers.alerts import send_alert, send_hi2_alert, error_alert, send_missing_intervals_alert
 import asyncio
 import matplotlib.pyplot as plt
+from datetime import datetime, time, timedelta
+
+eq_sessions = [
+    (time(10, 5, 0), time(18, 40, 0)),
+    (time(19, 5, 0), time(23, 50, 0))
+]
+
+fx_sessions = [
+    (time(10, 5, 0), time(19, 0, 0))
+]
+
+fo_sessions = [
+    (time(10, 5, 0), time(14, 0, 0)),
+    (time(14, 10, 0), time(18, 50, 0)),
+    (time(19, 10, 0), time(23, 50, 0))
+]
 
 class Market(enum.Enum):
 
@@ -111,13 +127,24 @@ class ISSEndpointsFetcher(PassportMOEXAuth):
 
         #------------------------------------------------#
 
-        fo_securities_url = f'https://iss.moex.com/iss/engines/futures/markets/forts/boards/rfud/securities.json'
+        url_obstats_prev_day = f'https://iss.moex.com/iss/datashop/algopack/fo/obstats.json'
                 
-        data = await self.auth_request(url=fo_securities_url)                    
-        columns = data['securities']['columns']
-        all_data = data['securities']['data']
+        all_data = []
+        page_num = 0
+        while True:
+            page_url = f'{url_obstats}?start={page_num * 1000}'
+            data = await self.auth_request(url=page_url)                    
+            columns = data['data']['columns']
+            page_data = data['data']['data']
+            
+            if not page_data or page_data is None:
+                break
+            
+            all_data.extend(page_data)
+            page_num += 1
 
-        df_fo_securities = pd.DataFrame(all_data, columns=columns)
+        df_obstats = pd.DataFrame(all_data, columns=columns)
+        df_obstats['tradedatetime'] = pd.to_datetime(df_obstats['tradedate'] + ' ' + df_obstats['tradetime'])
 
         now = datetime.now()
         rounded_minutes = (now.minute // 5) * 5
@@ -125,7 +152,7 @@ class ISSEndpointsFetcher(PassportMOEXAuth):
 
         df_obstats = df_obstats[df_obstats['tradedatetime'].dt.time == current_interval]
         
-        return df_obstats['secid'].nunique(), df_fo_securities['SECID'].nunique(), current_interval
+        return df_obstats['secid'].nunique(), df_f['SECID'].nunique(), current_interval
     
     async def check_hi2_status(self):
         def check_hi2(df: pd.DataFrame) -> bool:
@@ -172,11 +199,30 @@ class ISSEndpointsFetcher(PassportMOEXAuth):
         }
 
         async def fetch_and_process_data(endpoint):
+            missing_intervals = ""
             df, url = await self.fetch_data(market, endpoint, secid_for_market[market.value], date)
+            if market.value == 'eq':
+                if len(self.find_missing_intervals(df, eq_sessions)) == 0:
+                    missing_intervals += ''
+                else:
+                    missing_intervals += f"Missing intervals EQ {endpoint.value}: {[start_time.strftime('%H:%M') for start_time in self.find_missing_intervals(df, eq_sessions)]}\n\n"
+            if market.value == 'fx':
+                if len(self.find_missing_intervals(df, fx_sessions)) == 0:
+                    missing_intervals += ''
+                else:
+                    missing_intervals += f"Missing intervals FX {endpoint.value}: {[start_time.strftime('%H:%M') for start_time in self.find_missing_intervals(df, fx_sessions)]}\n\n"
+            if market.value == 'fo':
+                if len(self.find_missing_intervals(df, fo_sessions)) == 0:
+                    missing_intervals += ''
+                else:
+                    missing_intervals += f"Missing intervals FO {endpoint.value}: {[start_time.strftime('%H:%M') for start_time in self.find_missing_intervals(df, fo_sessions)]}\n\n"
+
             if df is None:
                 await error_alert(market=market, endpoint=endpoint)
             else:
                 await self.send_alert_if_delayed(market=market, endpoint=endpoint, df=df, url=url)
+
+            return missing_intervals
 
         tasks = []
         for endpoint in Endpoint:
@@ -184,7 +230,11 @@ class ISSEndpointsFetcher(PassportMOEXAuth):
                 continue
             tasks.append(fetch_and_process_data(endpoint))
 
-        await asyncio.gather(*tasks)
+        results = await asyncio.gather(*tasks)
+        results.remove('')
+        results = "\n".join(str(element) for element in results)
+        if results != '':
+            await send_missing_intervals_alert(results)
 
     async def draw_plot(self, market, endpoint, trading_date: date) -> None:
 
@@ -240,7 +290,7 @@ class ISSEndpointsFetcher(PassportMOEXAuth):
 
         colors = ['red' if delay > int(os.getenv("DELAY")) else 'blue' for delay in df['delay']]
 
-        plt.figure(figsize=(18, 6))
+        plt.figure(figsize=(12, 6))
 
         bar_width = 0.8
 
@@ -263,14 +313,14 @@ class ISSEndpointsFetcher(PassportMOEXAuth):
         table = plt.table(
             cellText=table_data,
             colLabels=table_columns,
-            cellLoc='center', loc='bottom', bbox=[0, -1, 1, 0.5]
+            cellLoc='center', loc='bottom', bbox=[0, -0.95, 1, 0.5]  # [x0, y0, width, height]
         )
 
         table.auto_set_font_size(False)
         table.set_fontsize(10)
         table.scale(1, 1.5)
 
-        plt.subplots_adjust(bottom=0.3)
+        plt.subplots_adjust(bottom=0.4)
 
         plt.tight_layout()
 
@@ -279,6 +329,32 @@ class ISSEndpointsFetcher(PassportMOEXAuth):
 
         print(filename)
         return filename
+
+    def generate_expected_intervals(self, start_time, end_time):
+        intervals = []
+        current_time = datetime.combine(datetime.today(), start_time)
+        end_time = datetime.combine(datetime.today(), end_time)
+        while current_time <= end_time:
+            intervals.append(current_time.time())
+            current_time += timedelta(minutes=5)
+        return intervals
+
+    def find_missing_intervals(self, df, session_times):
+        df['time_only'] = pd.to_datetime(df['ts']).dt.time
+        
+        current_time = datetime.now().time()
+        missing_intervals = []
+
+        for start_time, end_time in session_times:
+            expected_intervals = self.generate_expected_intervals(start_time, end_time)
+            
+            past_intervals = [interval for interval in expected_intervals if interval <= current_time]
+            
+            for interval in past_intervals:
+                if interval not in df['time_only'].values:
+                    missing_intervals.append(interval)
+        
+        return missing_intervals
 
 
 
@@ -290,6 +366,6 @@ if __name__ == '__main__':
         trading_date = date.today()
         #await fetcher.process_market_endpoints(market=Market.SHARES, date=trading_date)
         #await fetcher.draw_plot(market=Market.SHARES, endpoint=Endpoint.TRADESTATS, trading_date=trading_date)
-        print(await fetcher.tickers_count_fo_obstats())
+        #print(await fetcher.tickers_count_fo_obstats())
 
     asyncio.run(test_fetch_data())
