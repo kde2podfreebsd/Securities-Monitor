@@ -225,7 +225,7 @@ class ISSEndpointsFetcher(PassportMOEXAuth):
             new_intervals = current_intervals - self.previously_alerted_intervals[market.value]
             self.previously_alerted_intervals[market.value].update(new_intervals)
 
-            return "\n".join(str(interval) for interval in new_intervals)
+            return f"{market.value}: ".join(str(interval) for interval in new_intervals)
 
         tasks = []
         for endpoint in Endpoint:
