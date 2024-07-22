@@ -236,8 +236,8 @@ class ISSEndpointsFetcher(PassportMOEXAuth):
         results = await asyncio.gather(*tasks)
         results = [result for result in results if result]
         results = "\n".join(results)
-        if results:
-            await send_missing_intervals_alert(results)
+        #if results:
+            #await send_missing_intervals_alert(results)
 
     async def draw_plot(self, market, endpoint, trading_date: date) -> None:
 
