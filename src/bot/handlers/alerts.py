@@ -6,6 +6,7 @@ from datetime import date
 from telebot import types
 from src.bot.config import bot
 from src.passport import PassportMOEXAuth
+from datetime import date, timedelta
 
 load_dotenv()
 
@@ -50,7 +51,7 @@ async def error_alert(market, endpoint):
 
     await bot.send_message(
         chat_id=os.getenv('TELEGRAM_GROUP_CHATID'),
-        text=f"Проблема с получением данных для маркета {market.value} | {endpoint.value}"
+        text=f"Проблема с получением данных для маркета {market.value} | {endpoint if endpoint == 'futoi' else endpoint.value}"
     )
 
 async def send_hi2_alert(status: dict):
@@ -74,10 +75,10 @@ async def send_hi2_alert(status: dict):
     )
 
 
-async def send_fo_obstats_tickers_count(fo_obstats_count_tickers: int, fo_tradestats_count_tickers: int, trading_time: datetime.time):
+async def send_fo_obstats_tickers_count(fo_obstats_count_tickers: int, fo_obstats_count_tickers_prev_day: int, trading_time: datetime.time):
     await bot.send_message(
         chat_id=os.getenv('TELEGRAM_GROUP_CHATID'),
-        text=f"❗️Alert\nКоличество уникальных тикеров для FO OBstats: {fo_obstats_count_tickers}. securities count: {fo_tradestats_count_tickers}"
+        text=f"❗️Alert\nКоличество уникальных тикеров для FO OBstats на {date.today().strftime('%d.%m.%Y')} {trading_time}: {fo_obstats_count_tickers}.\nКоличество уникальных тикеров для FO OBstats на {(date.today() - timedelta(days=1)) .strftime('%d.%m.%Y')}: {fo_obstats_count_tickers_prev_day}."
     )
 
 async def send_missing_intervals_alert(missing_intervals: str):

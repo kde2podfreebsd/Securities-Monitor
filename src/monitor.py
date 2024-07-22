@@ -47,6 +47,12 @@ class ISSEndpointsFetcher(PassportMOEXAuth):
             password=os.getenv('MOEX_PASSPORT_PASSWORD')
         )
 
+        self.previously_alerted_intervals = {
+            'eq': set(),
+            'fx': set(),
+            'fo': set()
+        }
+
     @staticmethod
     def _prepare_dataframe(data: List[List[str]]) -> pd.DataFrame:
         
@@ -126,13 +132,11 @@ class ISSEndpointsFetcher(PassportMOEXAuth):
         df_obstats['tradedatetime'] = pd.to_datetime(df_obstats['tradedate'] + ' ' + df_obstats['tradetime'])
 
         #------------------------------------------------#
-
-        url_obstats_prev_day = f'https://iss.moex.com/iss/datashop/algopack/fo/obstats.json'
                 
         all_data = []
         page_num = 0
         while True:
-            page_url = f'{url_obstats}?start={page_num * 1000}'
+            page_url = f'{url_obstats}?date={(date.today() - timedelta(days=1)).strftime("%Y-%m-%d")}&start={page_num * 1000}'
             data = await self.auth_request(url=page_url)                    
             columns = data['data']['columns']
             page_data = data['data']['data']
@@ -143,8 +147,8 @@ class ISSEndpointsFetcher(PassportMOEXAuth):
             all_data.extend(page_data)
             page_num += 1
 
-        df_obstats = pd.DataFrame(all_data, columns=columns)
-        df_obstats['tradedatetime'] = pd.to_datetime(df_obstats['tradedate'] + ' ' + df_obstats['tradetime'])
+        df_obstats_prev_day = pd.DataFrame(all_data, columns=columns)
+        df_obstats_prev_day['tradedatetime'] = pd.to_datetime(df_obstats_prev_day['tradedate'] + ' ' + df_obstats_prev_day['tradetime'])
 
         now = datetime.now()
         rounded_minutes = (now.minute // 5) * 5
@@ -152,7 +156,7 @@ class ISSEndpointsFetcher(PassportMOEXAuth):
 
         df_obstats = df_obstats[df_obstats['tradedatetime'].dt.time == current_interval]
         
-        return df_obstats['secid'].nunique(), df_f['SECID'].nunique(), current_interval
+        return df_obstats['secid'].nunique(), df_obstats_prev_day['secid'].nunique(), current_interval
     
     async def check_hi2_status(self):
         def check_hi2(df: pd.DataFrame) -> bool:
@@ -188,9 +192,12 @@ class ISSEndpointsFetcher(PassportMOEXAuth):
         dataframe['ts'] = pd.to_datetime(dataframe['tradedate'] + ' ' + dataframe['tradetime'])
         dataframe = dataframe[columns].copy()
         df_reversed = dataframe.sort_index(ascending=False).reset_index(drop=True)
-        await self.send_alert_if_delayed('fo', 'futoi', df_reversed, url=url.replace(".json", ''))
+        if df_reversed is None:
+            await error_alert(market='fo', endpoint='futoi')
+            return 
+        else:
+            await self.send_alert_if_delayed('fo', 'futoi', df_reversed, url=url.replace(".json", ''))
         
-
     async def process_market_endpoints(self, market: Market, date: date) -> None:
         secid_for_market = {
             "eq": 'SBER',
@@ -199,30 +206,26 @@ class ISSEndpointsFetcher(PassportMOEXAuth):
         }
 
         async def fetch_and_process_data(endpoint):
-            missing_intervals = ""
             df, url = await self.fetch_data(market, endpoint, secid_for_market[market.value], date)
-            if market.value == 'eq':
-                if len(self.find_missing_intervals(df, eq_sessions)) == 0:
-                    pass
-                else:
-                    missing_intervals += f"Missing intervals EQ {endpoint.value}: {[start_time.strftime('%H:%M') for start_time in self.find_missing_intervals(df, eq_sessions)]}\n\n"
-            if market.value == 'fx':
-                if len(self.find_missing_intervals(df, fx_sessions)) == 0:
-                    pass
-                else:
-                    missing_intervals += f"Missing intervals FX {endpoint.value}: {[start_time.strftime('%H:%M') for start_time in self.find_missing_intervals(df, fx_sessions)]}\n\n"
-            if market.value == 'fo':
-                if len(self.find_missing_intervals(df, fo_sessions)) == 0:
-                    pass
-                else:
-                    missing_intervals += f"Missing intervals FO {endpoint.value}: {[start_time.strftime('%H:%M') for start_time in self.find_missing_intervals(df, fo_sessions)]}\n\n"
-
             if df is None:
-                await error_alert(market=market, endpoint=endpoint)
+                await self.error_alert(market=market, endpoint=endpoint)
+                return ""
             else:
                 await self.send_alert_if_delayed(market=market, endpoint=endpoint, df=df, url=url)
 
-            return missing_intervals
+            if market.value == 'eq':
+                current_intervals = set(self.find_missing_intervals(df, eq_sessions))
+            elif market.value == 'fx':
+                current_intervals = set(self.find_missing_intervals(df, fx_sessions))
+            elif market.value == 'fo':
+                current_intervals = set(self.find_missing_intervals(df, fo_sessions))
+            else:
+                current_intervals = set()
+
+            new_intervals = current_intervals - self.previously_alerted_intervals[market.value]
+            self.previously_alerted_intervals[market.value].update(new_intervals)
+
+            return "\n".join(str(interval) for interval in new_intervals)
 
         tasks = []
         for endpoint in Endpoint:
@@ -231,9 +234,9 @@ class ISSEndpointsFetcher(PassportMOEXAuth):
             tasks.append(fetch_and_process_data(endpoint))
 
         results = await asyncio.gather(*tasks)
-        results.remove('')
-        results = "\n".join(str(element) for element in results)
-        if results != '':
+        results = [result for result in results if result]
+        results = "\n".join(results)
+        if results:
             await send_missing_intervals_alert(results)
 
     async def draw_plot(self, market, endpoint, trading_date: date) -> None:
@@ -313,7 +316,7 @@ class ISSEndpointsFetcher(PassportMOEXAuth):
         table = plt.table(
             cellText=table_data,
             colLabels=table_columns,
-            cellLoc='center', loc='bottom', bbox=[0, -0.95, 1, 0.5]  # [x0, y0, width, height]
+            cellLoc='center', loc='bottom', bbox=[0, -0.95, 1, 0.5]
         )
 
         table.auto_set_font_size(False)
@@ -364,7 +367,7 @@ if __name__ == '__main__':
     async def test_fetch_data():
         fetcher = ISSEndpointsFetcher()
         trading_date = date.today()
-        #await fetcher.process_market_endpoints(market=Market.SHARES, date=trading_date)
+        #await fetcher.process_market_endpoints(market=Market.CURRENCY, date=date.today())
         #await fetcher.draw_plot(market=Market.SHARES, endpoint=Endpoint.TRADESTATS, trading_date=trading_date)
         #print(await fetcher.tickers_count_fo_obstats())
 

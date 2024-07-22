@@ -63,16 +63,15 @@ class TradingScheduler(cmd.Cmd):
         if status:
             await self.iss_fetcher.process_market_endpoints(Market.FUTURES, date.today())
 
-            ######################################
-            # fo_obstats_count_tickers, fo_tradestats_count_tickers, current_interval = await self.iss_fetcher.tickers_count_fo_obstats()
-
-            # if fo_obstats_count_tickers < fo_tradestats_count_tickers:
-            #     await send_fo_obstats_tickers_count(
-            #         fo_obstats_count_tickers=fo_obstats_count_tickers,
-            #         fo_tradestats_count_tickers=fo_tradestats_count_tickers,
-            #         trading_time=current_interval
-            #         )
-            ######################################
+            fo_obstats_count_tickers, fo_obstats_count_tickers_prev_day, current_interval = await self.iss_fetcher.tickers_count_fo_obstats()
+            print("fo_obstats_count_tickers: ", fo_obstats_count_tickers)
+            print("fo_obstats_count_tickers_prev_day: ", fo_obstats_count_tickers_prev_day)
+            if fo_obstats_count_tickers < fo_obstats_count_tickers_prev_day:
+                await send_fo_obstats_tickers_count(
+                    fo_obstats_count_tickers=fo_obstats_count_tickers,
+                    fo_obstats_count_tickers_prev_day=fo_obstats_count_tickers_prev_day,
+                    trading_time=current_interval
+                    )
 
             await self.iss_fetcher.futoi_delay_notifications(date.today())
         else:
