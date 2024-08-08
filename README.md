@@ -43,7 +43,7 @@
 
 ------ 
 
-Так же каждые 5 минут считается кол-во уникальных secid для FO Obstats и считается кол-во secid в futures/forts/rfud/securities. Если fo_obstats_secid_count < securities_secid_count, то в группу отправляется алерт.
+Так же каждые 5 минут считается кол-во уникальных secid для FO Obstats и находится наибольшее значение кол-ва тикеров для 1ой 5-минутки за прошлый день. Если fo_obstats_secid_count_current_day > fo_obstats_secid_count_prev_day, то в группу отправляется алерт.
 
 Так же реализована функция проверки пропуска 5минутки (по вхождению в интервалы торговых сессий), но не имплементирована. src/monitor.py/ def - check_candles
 
@@ -93,36 +93,8 @@ docker build -t algopack_monitor .
 docker run -it algopack_monitor
 ```
 
-3. Makefile
-```.sh
-make
-```
-
 ## Структура проекта
 ```
-.
-├── Dockerfile
-├── Makefile 
-├── README.md
-├── requirements.txt
-├── setup.cfg
-└── src
-    ├── bot - Пакет с исходниками телеграм бота
-    │   ├── bot.py - точка входа бота
-    │   ├── config.py - конфиги тг бота
-    │   └── handlers - обработчики стейтов
-    │       ├── __init__.py
-    │       ├── alerts.py
-    │       ├── context.py
-    │       ├── days_status.py
-    │       └── filters.py
-    ├── monitor.py - Модуль с функциями мониторинга эндпоинтов
-    ├── passport.py - Модуль авторизации запросов через moex.passport.com
-    ├── scheduler.py - Модуль расписания задач
-    ├── static - папка для временного хранения изображения с графиками
-    ├── trading_calendar.json - сгенерированное торговое расписание со статусами для каждого дня
-    └── trading_calendar.py - Модуль работы с торговым расписанием
-
 .
 ├── Dockerfile
 ├── Makefile
