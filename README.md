@@ -34,7 +34,7 @@
 ------
 
 #### HI2
-* 19:03 - 1 раз в день
+* 19:01 - 1 раз в день
 * проверка наличия метрик hi2 за сегодняшний день
 
 #### Графики эндпоинтов
@@ -45,6 +45,7 @@
 
 Так же каждые 5 минут считается кол-во уникальных secid для FO Obstats и считается кол-во secid в futures/forts/rfud/securities. Если fo_obstats_secid_count < securities_secid_count, то в группу отправляется алерт.
 
+Так же реализована функция проверки пропуска 5минутки (по вхождению в интервалы торговых сессий), но не имплементирована. src/monitor.py/ def - check_candles
 
 ## Настройка
 ```.env
@@ -58,7 +59,7 @@ MOEX_PASSPORT_PASSWORD=<passport.moex password>
 
 # MONITOR CONFIG
 DELAY=<delay in seconds. 600 = 10min>
-INTERVAL_REQUEST=<waiting>
+INTERVAL_REQUEST=<waiting in min. 5 = 5min>
 ```
 
 ## Запуск
@@ -76,10 +77,14 @@ pip install -r requirements.txt
 export PYTHONPATH=$(pwd)
 ```
 ```.sh
-python /src/bot/bot.py & python /src/scheduler.py
+-terminal 1
+python /src/bot/bot.py
+
+-terminal 2
+python /src/scheduler.py
 ```
 
-2. Ручная сборка Docker
+2. Docker
 ```.sh
 docker build -t algopack_monitor .
 ```
@@ -90,7 +95,7 @@ docker run -it algopack_monitor
 
 3. Makefile
 ```.sh
-make docker_run
+make
 ```
 
 ## Структура проекта
@@ -118,7 +123,30 @@ make docker_run
     ├── trading_calendar.json - сгенерированное торговое расписание со статусами для каждого дня
     └── trading_calendar.py - Модуль работы с торговым расписанием
 
-5 directories, 17 files
+.
+├── Dockerfile
+├── Makefile
+├── README.md
+├── entrypoint.sh
+├── requirements.txt
+├── setup.cfg
+├── src
+│   ├── bot - Пакет с исходниками телеграм бота
+│   │   ├── bot.py - точка входа бота
+│   │   ├── config.py конфиги тг бота
+│   │   └── handlers - обработчики стейтов
+│   │       ├── __init__.py
+│   │       ├── alerts.py
+│   │       ├── context.py
+│   │       ├── days_status.py
+│   │       └── filters.py
+│   ├── monitor.py - Модуль с функциями мониторинга эндпоинтов
+│   ├── passport.py - Модуль авторизации запросов через moex.passport.com
+│   ├── scheduler.py - Модуль расписания задач
+│   ├── static - папка для временного хранения изображения с графиками
+│   ├── trading_calendar.json - сгенерированное торговое расписание со статусами для каждого дня
+│   └── trading_calendar.py - Модуль работы с торговым расписанием
+└── supervisord.conf - Конфиг супервизора для автосборки Docker
 ```
 
 ## Управление 
@@ -128,7 +156,7 @@ make docker_run
 
 ### CMD
 
-Для получения текущих задач в планировщике, введите jobs в cmd запущенного скрипта.
+Для получения текущих задач в планировщике, введите jobs в cmd/terminal запущенного скрипта.
 
 ``` .sh
 > print current jobs list - jobs:   jobs

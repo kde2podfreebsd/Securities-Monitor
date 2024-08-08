@@ -12,11 +12,11 @@ from datetime import datetime, time, timedelta
 
 eq_sessions = [
     (time(10, 5, 0), time(18, 40, 0)),
-    (time(19, 5, 0), time(23, 50, 0))
+    (time(19, 10, 0), time(23, 50, 0))
 ]
 
 fx_sessions = [
-    (time(10, 5, 0), time(19, 0, 0))
+    (time(10, 5, 0), time(18, 55, 0))
 ]
 
 fo_sessions = [
@@ -96,6 +96,41 @@ class ISSEndpointsFetcher(PassportMOEXAuth):
             await asyncio.sleep(1)
         print('Max number of retries reached')
         return None, None
+    
+    async def check_candles(self, market: Market, secid: str) -> None:
+        '''
+        work, but not implemented
+        '''
+        url_builder = {
+            Market.SHARES: ('stock', 'shares', 'tqbr'),
+            Market.CURRENCY: ('currency', 'selt', 'cets'),
+            Market.FUTURES: ('futures', 'forts', 'rfud')
+        }
+
+        start = 0
+
+        if datetime.now().hour >= 15:
+            start = 60 * (datetime.now().hour - 14)
+
+        url = f"https://iss.moex.com/iss/engines/{url_builder[market][0]}/markets/{url_builder[market][1]}/boards/{url_builder[market][2]}/securities/{secid}/candles.json?from={date.today().strftime('%Y-%m-%d')}&till={date.today().strftime('%Y-%m-%d')}&interval=1&start={start}"
+        data = await self.auth_request(url=url)
+        print(url)
+        if data is not None:
+            df = pd.DataFrame(data['candles']['data'], columns=data['candles']['columns'])
+            now = datetime.now()
+            start_time = now - timedelta(minutes=5)
+            print(start_time)
+            df['begin'] = pd.to_datetime(df['begin'])
+            df = df[df['begin'] > start_time]
+            mask = (df['begin'] >= start_time) & (df['begin'] <= now)
+            last_5_minutes_df = df.loc[mask]
+            print(last_5_minutes_df)
+            total_volume = last_5_minutes_df['volume'].sum()
+            print(total_volume)
+            return total_volume > 0
+        
+        return False
+
     
     async def find_liquid_fo_secid(self) -> str:
         url = f'https://iss.moex.com/iss/datashop/algopack/fo/tradestats.json?iss.only=data'
@@ -207,11 +242,15 @@ class ISSEndpointsFetcher(PassportMOEXAuth):
 
         async def fetch_and_process_data(endpoint):
             df, url = await self.fetch_data(market, endpoint, secid_for_market[market.value], date)
-            if df is None:
-                await self.error_alert(market=market, endpoint=endpoint)
-                return ""
-            else:
-                await self.send_alert_if_delayed(market=market, endpoint=endpoint, df=df, url=url)
+
+            # Check if 5min candle is missing!!!
+            # if df is None:
+            #     await self.error_alert(market=market, endpoint=endpoint)
+            #     return ""
+            # else:
+            #     is_active_last_5_min = await self.check_candles(market=market, secid=secid_for_market[market.value])
+            #     if is_active_last_5_min:
+            #         await self.send_alert_if_delayed(market=market, endpoint=endpoint, df=df, url=url)
 
             if market.value == 'eq':
                 current_intervals = set(self.find_missing_intervals(df, eq_sessions))
@@ -225,7 +264,10 @@ class ISSEndpointsFetcher(PassportMOEXAuth):
             new_intervals = current_intervals - self.previously_alerted_intervals[market.value]
             self.previously_alerted_intervals[market.value].update(new_intervals)
 
-            return f"{market.value}: ".join(str(interval) for interval in new_intervals)
+            if new_intervals:
+                return f"{market.value}:" + f" ".join(str(interval) for interval in new_intervals)
+            else:
+                return None
 
         tasks = []
         for endpoint in Endpoint:
@@ -235,9 +277,9 @@ class ISSEndpointsFetcher(PassportMOEXAuth):
 
         results = await asyncio.gather(*tasks)
         results = [result for result in results if result]
-        results = "\n".join(results)
-        #if results:
-            #await send_missing_intervals_alert(results)
+        results = f"\n".join(results)
+        if results:
+            await send_missing_intervals_alert(results)
 
     async def draw_plot(self, market, endpoint, trading_date: date) -> None:
 
@@ -370,5 +412,7 @@ if __name__ == '__main__':
         #await fetcher.process_market_endpoints(market=Market.CURRENCY, date=date.today())
         #await fetcher.draw_plot(market=Market.SHARES, endpoint=Endpoint.TRADESTATS, trading_date=trading_date)
         #print(await fetcher.tickers_count_fo_obstats())
+        #print(await fetcher.check_candles(market=Market.FUTURES, secid="GLDRUBF"))
+        #print(await fetcher.futoi_delay_notifications(date=date.today()))
 
     asyncio.run(test_fetch_data())

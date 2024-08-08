@@ -13,7 +13,7 @@ import cmd
 
 load_dotenv()
 
-class TradingScheduler(cmd.Cmd):
+class TradingScheduler():
 
     def __init__(self):
         super().__init__()
@@ -39,7 +39,7 @@ class TradingScheduler(cmd.Cmd):
         self.fo_session2_start_time = time(14, 15, 30)
         self.fo_session2_end_time = time(18, 50, 50)
 
-        self.fo_session3_start_time = time(19, 15, 30)
+        self.fo_session3_start_time = time(19, 10, 30)
         self.fo_session3_end_time = time(23, 50, 50)
 
         self.interval_minutes = int(os.getenv('INTERVAL_REQUEST'))
